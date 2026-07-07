@@ -1,0 +1,1003 @@
+<!DOCTYPE html>
+<html lang="sw">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kavishe Njia Pro - Usalama wa Njia</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    <style>
+        body { background-color: #020617; }
+        .glass-card { background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(12px); border: 1px solid rgba(51, 65, 85, 0.45); }
+        #map { z-index: 0; }
+        .leaflet-control-attribution { font-size: 9px !important; }
+        .custom-scrollbar::-webkit-scrollbar { width: 5px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #020617; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 999px; }
+        .compass-arrow { transition: transform 0.3s ease; }
+    </style>
+</head>
+<body class="text-slate-100 min-h-screen font-sans antialiased custom-scrollbar">
+
+    <!-- ================= AUTH MODAL ================= -->
+    <div id="authModal" class="fixed inset-0 z-[900] bg-slate-950/95 flex items-center justify-center p-4 overflow-y-auto">
+        <div class="glass-card w-full max-w-md p-6 rounded-3xl shadow-2xl space-y-5 my-6">
+            <div class="text-center space-y-2">
+                <div class="w-14 h-14 bg-blue-600/10 border border-blue-500/30 rounded-2xl flex items-center justify-center mx-auto text-blue-500 text-2xl">
+                    <i class="fa-solid fa-route"></i>
+                </div>
+                <h2 class="text-xl font-black tracking-wide text-white uppercase">Kavishe Njia Pro</h2>
+                <p class="text-xs text-slate-400">Fuatilia njia salama - Mzazi na Mtoto</p>
+            </div>
+
+            <div id="roleWrapper" class="hidden space-y-1">
+                <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Wewe ni nani?</label>
+                <select id="authRole" class="w-full bg-slate-900 border border-slate-800 focus:border-blue-500 rounded-xl px-4 py-3 text-xs text-white outline-none">
+                    <option value="Mtoto">Mtoto (Ninayetembea kwenye njia)</option>
+                    <option value="Mzazi">Mzazi (Ninayefuatilia)</option>
+                </select>
+            </div>
+
+            <div id="fullNameWrapper" class="hidden space-y-1">
+                <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Jina Kamili</label>
+                <input type="text" id="authName" class="w-full bg-slate-900 border border-slate-800 focus:border-blue-500 rounded-xl px-4 py-3 text-xs text-white outline-none" placeholder="Jina lako">
+            </div>
+
+            <div id="parentEmailWrapper" class="hidden space-y-1">
+                <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Barua Pepe ya Mzazi (Hiari)</label>
+                <input type="email" id="authParentEmail" class="w-full bg-slate-900 border border-slate-800 focus:border-blue-500 rounded-xl px-4 py-3 text-xs text-white outline-none" placeholder="mzazi@gmail.com">
+                <p class="text-[9px] text-slate-500">Ukijaza hii, mzazi wako ataweza kukufuatilia. Kama mzazi hajasajili bado, unaweza kuunganisha baadaye.</p>
+            </div>
+
+            <div class="space-y-1">
+                <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Barua Pepe</label>
+                <input type="email" id="authEmail" class="w-full bg-slate-900 border border-slate-800 focus:border-blue-500 rounded-xl px-4 py-3 text-xs text-white outline-none" placeholder="mfano@gmail.com">
+            </div>
+            <div class="space-y-1">
+                <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Nywila</label>
+                <input type="password" id="authPassword" class="w-full bg-slate-900 border border-slate-800 focus:border-blue-500 rounded-xl px-4 py-3 text-xs text-white outline-none" placeholder="••••••••">
+            </div>
+
+            <button id="authPrimaryBtn" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-black text-xs py-3.5 rounded-xl transition uppercase tracking-wider">Ingia</button>
+
+            <div class="text-center">
+                <button id="authToggleBtn" class="text-xs text-blue-400 hover:text-blue-300 font-bold underline">Hujasajiliwa bado? Tengeneza Akaunti</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= MAIN APP ================= -->
+    <div id="mainAppContent" class="hidden min-h-screen flex flex-col">
+        <header class="bg-slate-900/90 sticky top-0 z-[500] backdrop-blur-md border-b border-slate-800/80 px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center gap-2">
+                <i class="fa-solid fa-route text-blue-500 text-lg"></i>
+                <div>
+                    <h1 class="text-xs font-black tracking-wider text-white uppercase">KAVISHE NJIA PRO</h1>
+                    <p id="userGreeting" class="text-[9px] text-slate-400 font-medium">Karibu</p>
+                </div>
+            </div>
+            <button id="logoutBtn" class="bg-slate-950 text-red-400 border border-slate-800 p-2 rounded-lg text-xs hover:bg-red-950/20 transition"><i class="fa-solid fa-right-from-bracket"></i></button>
+        </header>
+
+        <!-- ============ MTOTO VIEW ============ -->
+        <div id="mtotoView" class="hidden flex-1">
+            <div id="map" class="w-full h-[42vh]"></div>
+
+            <main class="max-w-3xl mx-auto p-4 space-y-4 pb-10">
+
+                <!-- STATUS BANNER -->
+                <div id="statusBanner" class="glass-card rounded-2xl p-4 flex items-center gap-3">
+                    <div id="statusIcon" class="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center text-slate-400 text-lg">
+                        <i class="fa-solid fa-circle-info"></i>
+                    </div>
+                    <div class="flex-1">
+                        <p id="statusTitle" class="text-xs font-black text-white uppercase tracking-wide">Tayari</p>
+                        <p id="statusDetail" class="text-[11px] text-slate-400">Chagua sehemu chini kuanza.</p>
+                    </div>
+                    <div id="compassBox" class="hidden flex-col items-center">
+                        <i id="compassArrow" class="fa-solid fa-location-arrow text-2xl text-orange-400 compass-arrow"></i>
+                        <span id="compassLabel" class="text-[8px] text-slate-400 font-bold uppercase"></span>
+                    </div>
+                </div>
+
+                <!-- TRIP STATS -->
+                <div id="tripStatsCard" class="hidden glass-card rounded-2xl p-4 grid grid-cols-3 gap-2 text-center">
+                    <div>
+                        <p id="statDistance" class="text-sm font-black text-white">0 m</p>
+                        <p class="text-[9px] text-slate-500 uppercase">Umbali</p>
+                    </div>
+                    <div>
+                        <p id="statTime" class="text-sm font-black text-white">00:00</p>
+                        <p class="text-[9px] text-slate-500 uppercase">Muda</p>
+                    </div>
+                    <div>
+                        <p id="statSpeed" class="text-sm font-black text-white">0 km/h</p>
+                        <p class="text-[9px] text-slate-500 uppercase">Kasi</p>
+                    </div>
+                </div>
+
+                <!-- RECORD -->
+                <div class="glass-card rounded-2xl p-4 space-y-3">
+                    <h3 class="text-[10px] font-black uppercase tracking-wide text-blue-400"><i class="fa-solid fa-pen mr-1"></i> Rekodi Njia Mpya</h3>
+                    <input type="text" id="routeNameInput" placeholder="Jina la Njia (mfano: Njia ya Shule)" class="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-xl px-3 py-2.5 text-xs text-white outline-none">
+                    <div class="grid grid-cols-2 gap-3">
+                        <button id="startRecordBtn" class="bg-blue-600 hover:bg-blue-500 text-white font-black text-xs py-3 rounded-xl transition uppercase tracking-wide">
+                            <i class="fa-solid fa-play mr-1"></i> Anza
+                        </button>
+                        <button id="stopRecordBtn" disabled class="bg-slate-800 text-slate-500 font-black text-xs py-3 rounded-xl uppercase tracking-wide cursor-not-allowed">
+                            <i class="fa-solid fa-stop mr-1"></i> Simama & Hifadhi
+                        </button>
+                    </div>
+                </div>
+
+                <!-- MY ROUTES LIBRARY -->
+                <div class="glass-card rounded-2xl p-4 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-[10px] font-black uppercase tracking-wide text-emerald-400"><i class="fa-solid fa-map mr-1"></i> Njia Zangu</h3>
+                        <button id="refreshRoutesBtn" class="text-[9px] text-slate-400 hover:text-white"><i class="fa-solid fa-sync-alt"></i> Refresh</button>
+                    </div>
+                    <div id="routesList" class="space-y-2 max-h-48 overflow-y-auto custom-scrollbar">
+                        <p class="text-[10px] text-slate-500 text-center py-4">Bado hujahifadhi njia yoyote.</p>
+                    </div>
+                </div>
+
+                <!-- FOLLOW -->
+                <div class="glass-card rounded-2xl p-4 space-y-3">
+                    <h3 class="text-[10px] font-black uppercase tracking-wide text-orange-400"><i class="fa-solid fa-shoe-prints mr-1"></i> Fuata Njia Iliyochaguliwa</h3>
+                    <p id="activeRouteLabel" class="text-[10px] text-slate-400">Hakuna njia iliyochaguliwa. Bofya "Fuata" kwenye orodha ya Njia Zangu.</p>
+
+                    <div class="space-y-1">
+                        <label class="text-[10px] font-bold text-slate-400 uppercase">Umbali wa Onyo (mita)</label>
+                        <input type="number" id="thresholdInput" value="30" min="5" max="500" class="w-full bg-slate-950 border border-slate-800 focus:border-orange-500 rounded-xl px-3 py-2 text-xs text-white outline-none">
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <button id="startFollowBtn" disabled class="bg-slate-800 text-slate-500 font-black text-xs py-3 rounded-xl uppercase tracking-wide cursor-not-allowed">
+                            <i class="fa-solid fa-location-crosshairs mr-1"></i> Anza Kufuatilia
+                        </button>
+                        <button id="stopFollowBtn" disabled class="bg-slate-800 text-slate-500 font-black text-xs py-3 rounded-xl uppercase tracking-wide cursor-not-allowed">
+                            <i class="fa-solid fa-stop mr-1"></i> Simama
+                        </button>
+                    </div>
+                </div>
+
+                <!-- EVENT LOG -->
+                <div class="glass-card rounded-2xl p-4 space-y-2">
+                    <h3 class="text-[10px] font-black uppercase tracking-wide text-red-400"><i class="fa-solid fa-clock-rotate-left mr-1"></i> Kumbukumbu za Safari ya Sasa</h3>
+                    <div id="eventLog" class="space-y-1 max-h-32 overflow-y-auto custom-scrollbar">
+                        <p class="text-[10px] text-slate-500">Hakuna matukio bado.</p>
+                    </div>
+                </div>
+
+                <!-- LINK TO PARENT -->
+                <div class="glass-card rounded-2xl p-4 space-y-2">
+                    <h3 class="text-[10px] font-black uppercase tracking-wide text-purple-400"><i class="fa-solid fa-link mr-1"></i> Unganisha na Mzazi</h3>
+                    <p id="parentLinkStatus" class="text-[10px] text-slate-400">Inaangalia hali ya uunganisho...</p>
+                    <div class="flex gap-2">
+                        <input type="email" id="relinkParentEmail" placeholder="barua-pepe-ya-mzazi@gmail.com" class="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white outline-none">
+                        <button id="relinkBtn" class="bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold px-4 rounded-xl">Unganisha</button>
+                    </div>
+                </div>
+
+            </main>
+        </div>
+
+        <!-- ============ MZAZI VIEW ============ -->
+        <div id="mzaziView" class="hidden flex-1 max-w-3xl mx-auto p-4 space-y-4 w-full pb-10">
+            <div class="glass-card rounded-2xl p-4">
+                <h3 class="text-[10px] font-black uppercase tracking-wide text-blue-400 mb-2"><i class="fa-solid fa-children mr-1"></i> Watoto Wangu Walioungnishwa</h3>
+                <div id="childrenList" class="space-y-3">
+                    <p class="text-[10px] text-slate-500 text-center py-4">Hujaunganishwa na mtoto yeyote bado. Mtoto wako anahitaji kuweka barua pepe yako wakati wa kusajili, au kubofya "Unganisha na Mzazi" kwenye akaunti yake.</p>
+                </div>
+            </div>
+
+            <div class="glass-card rounded-2xl p-4 space-y-2">
+                <h3 class="text-[10px] font-black uppercase tracking-wide text-emerald-400"><i class="fa-solid fa-key mr-1"></i> Angalia Njia kwa Kodi (Share Code)</h3>
+                <div class="flex gap-2">
+                    <input type="text" id="routeCodeInput" placeholder="Bandika kodi ya njia hapa" class="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white outline-none">
+                    <button id="loadRouteCodeBtn" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-4 rounded-xl">Fungua</button>
+                </div>
+            </div>
+
+            <div id="mzaziMapWrapper" class="hidden glass-card rounded-2xl p-3 space-y-2">
+                <div class="flex items-center justify-between px-1">
+                    <p id="mzaziMapTitle" class="text-[10px] font-black text-white uppercase">Ramani</p>
+                    <button id="closeMzaziMapBtn" class="text-slate-400 hover:text-white text-xs"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <div id="mzaziMap" class="w-full h-[40vh] rounded-xl overflow-hidden"></div>
+                <div id="mzaziLiveDetail" class="text-[10px] text-slate-400 px-1"></div>
+            </div>
+
+            <div class="glass-card rounded-2xl p-4 space-y-2">
+                <h3 class="text-[10px] font-black uppercase tracking-wide text-red-400 mb-1"><i class="fa-solid fa-list-check mr-1"></i> Historia ya Safari</h3>
+                <div id="tripsHistoryList" class="space-y-2 max-h-64 overflow-y-auto custom-scrollbar">
+                    <p class="text-[10px] text-slate-500 text-center py-4">Chagua mtoto hapo juu kuona historia yake.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="hidden fixed bottom-5 left-1/2 -translate-x-1/2 z-[900] text-white text-sm font-black px-6 py-4 rounded-2xl shadow-2xl border-2 max-w-sm text-center"></div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import {
+            getFirestore, doc, setDoc, getDoc, addDoc, deleteDoc, updateDoc,
+            collection, query, where, getDocs, orderBy, limit, onSnapshot, serverTimestamp
+        } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCHV-WGFBcLGFrfjfKafi_VPDSs4xUxIPo",
+            authDomain: "vishe-njia-app.firebaseapp.com",
+            projectId: "vishe-njia-app",
+            storageBucket: "vishe-njia-app.firebasestorage.app",
+            messagingSenderId: "553778001491",
+            appId: "1:553778001491:web:ba9598643f5452e5e9b8a6"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        let currentUser = null;
+        let currentUserData = null;
+
+        // ================= HELPERS =================
+        function toast(msg, type = "info") {
+            const t = document.getElementById('toast');
+            t.innerText = msg;
+            let cls = "bg-slate-900 border-blue-500";
+            if (type === "success") cls = "bg-emerald-900 border-emerald-500";
+            if (type === "error") cls = "bg-red-900 border-red-500";
+            if (type === "warning") cls = "bg-orange-900 border-orange-500";
+            t.className = `fixed bottom-5 left-1/2 -translate-x-1/2 z-[900] text-white text-sm font-black px-6 py-4 rounded-2xl shadow-2xl border-2 max-w-sm text-center ${cls}`;
+            t.classList.remove('hidden');
+            clearTimeout(t._hideTimer);
+            t._hideTimer = setTimeout(() => t.classList.add('hidden'), 4000);
+        }
+
+        function beep() {
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'square';
+                osc.frequency.value = 880;
+                gain.gain.value = 0.35;
+                osc.connect(gain); gain.connect(ctx.destination);
+                osc.start();
+                setTimeout(() => { osc.stop(); ctx.close(); }, 350);
+            } catch (e) { /* baadhi ya vivinjari huhitaji mguso wa kwanza wa mtumiaji kabla ya audio */ }
+        }
+
+        function haversineDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371000;
+            const toRad = (d) => d * Math.PI / 180;
+            const dLat = toRad(lat2 - lat1);
+            const dLon = toRad(lon2 - lon1);
+            const a = Math.sin(dLat/2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon/2) ** 2;
+            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        }
+
+        // Inarudisha pointi iliyo karibu zaidi kwenye njia + umbali wake (mita)
+        function nearestPointOnRoute(lat, lng, routeCoords) {
+            if (!routeCoords || routeCoords.length === 0) return null;
+            if (routeCoords.length === 1) {
+                return { lat: routeCoords[0][0], lng: routeCoords[0][1], distance: haversineDistance(lat, lng, routeCoords[0][0], routeCoords[0][1]) };
+            }
+            let best = null;
+            for (let i = 0; i < routeCoords.length - 1; i++) {
+                const [ax, ay] = routeCoords[i];
+                const [bx, by] = routeCoords[i+1];
+                const mPerDegLat = 111320;
+                const mPerDegLon = 111320 * Math.cos(ax * Math.PI / 180);
+                const P = { x: lng * mPerDegLon, y: lat * mPerDegLat };
+                const A = { x: ay * mPerDegLon, y: ax * mPerDegLat };
+                const B = { x: by * mPerDegLon, y: bx * mPerDegLat };
+                const ABx = B.x - A.x, ABy = B.y - A.y;
+                const APx = P.x - A.x, APy = P.y - A.y;
+                const abLenSq = ABx*ABx + ABy*ABy;
+                let t = abLenSq === 0 ? 0 : (APx*ABx + APy*ABy) / abLenSq;
+                t = Math.max(0, Math.min(1, t));
+                const cx = A.x + ABx * t, cy = A.y + ABy * t;
+                const dx = P.x - cx, dy = P.y - cy;
+                const dist = Math.sqrt(dx*dx + dy*dy);
+                if (!best || dist < best.distance) {
+                    best = { lat: cy / mPerDegLat, lng: cx / mPerDegLon, distance: dist };
+                }
+            }
+            return best;
+        }
+
+        function calcBearing(lat1, lon1, lat2, lon2) {
+            const toRad = d => d * Math.PI / 180, toDeg = r => r * 180 / Math.PI;
+            const y = Math.sin(toRad(lon2 - lon1)) * Math.cos(toRad(lat2));
+            const x = Math.cos(toRad(lat1)) * Math.sin(toRad(lat2)) - Math.sin(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.cos(toRad(lon2 - lon1));
+            return (toDeg(Math.atan2(y, x)) + 360) % 360;
+        }
+
+        function bearingToCardinal(deg) {
+            const dirs = ["Kaskazini", "Kaskazini-Mashariki", "Mashariki", "Kusini-Mashariki", "Kusini", "Kusini-Magharibi", "Magharibi", "Kaskazini-Magharibi"];
+            return dirs[Math.round(deg / 45) % 8];
+        }
+
+        // Douglas-Peucker: kupunguza pointi za ziada zisizo za lazima (jitter ya GPS)
+        function perpendicularDistance(point, lineStart, lineEnd) {
+            const res = nearestPointOnRoute(point[0], point[1], [lineStart, lineEnd]);
+            return res.distance;
+        }
+        function douglasPeucker(points, toleranceMeters) {
+            if (points.length < 3) return points;
+            let maxDist = 0, index = 0;
+            for (let i = 1; i < points.length - 1; i++) {
+                const d = perpendicularDistance(points[i], points[0], points[points.length - 1]);
+                if (d > maxDist) { maxDist = d; index = i; }
+            }
+            if (maxDist > toleranceMeters) {
+                const left = douglasPeucker(points.slice(0, index + 1), toleranceMeters);
+                const right = douglasPeucker(points.slice(index), toleranceMeters);
+                return left.slice(0, -1).concat(right);
+            }
+            return [points[0], points[points.length - 1]];
+        }
+
+        function formatTime(ms) {
+            const totalSec = Math.floor(ms / 1000);
+            const m = Math.floor(totalSec / 60).toString().padStart(2, '0');
+            const s = (totalSec % 60).toString().padStart(2, '0');
+            return `${m}:${s}`;
+        }
+
+        function explainGeoError(err) {
+            if (!window.isSecureContext) {
+                return "Ukurasa huu haupo kwenye HTTPS. Pandisha (host) faili hii mahali penye HTTPS (GitHub Pages/Netlify) kisha ujaribu tena.";
+            }
+            switch (err.code) {
+                case 1: return "Umekataa ruhusa ya 'Location'. Iwashe kwenye mipangilio ya kivinjari/simu.";
+                case 2: return "GPS haiwezi kupata ishara sasa hivi. Hakikisha Location imewashwa na uwe nje ya jengo.";
+                case 3: return "Imechukua muda mrefu kupata mahali. Jaribu tena mahali penye anga wazi.";
+                default: return err.message || "Sababu haijulikani.";
+            }
+        }
+
+        // ================= AUTH =================
+        let currentMode = "login";
+
+        onAuthStateChanged(auth, async (user) => {
+            if (!user) {
+                currentUser = null; currentUserData = null;
+                document.getElementById('authModal').classList.remove('hidden');
+                document.getElementById('mainAppContent').classList.add('hidden');
+                stopAllWatches();
+                return;
+            }
+            currentUser = user;
+            const userDocSnap = await getDoc(doc(db, "users", user.uid));
+            if (!userDocSnap.exists()) return;
+            currentUserData = userDocSnap.data();
+
+            document.getElementById('authModal').classList.add('hidden');
+            document.getElementById('mainAppContent').classList.remove('hidden');
+            document.getElementById('userGreeting').innerText = `${currentUserData.role}: ${currentUserData.fullName}`;
+
+            if (currentUserData.role === "Mzazi") {
+                document.getElementById('mzaziView').classList.remove('hidden');
+                document.getElementById('mtotoView').classList.add('hidden');
+                initMzaziDashboard();
+            } else {
+                document.getElementById('mtotoView').classList.remove('hidden');
+                document.getElementById('mzaziView').classList.add('hidden');
+                initMtotoApp();
+            }
+        });
+
+        document.getElementById('authToggleBtn').addEventListener('click', () => {
+            const roleWrapper = document.getElementById('roleWrapper');
+            const nameWrapper = document.getElementById('fullNameWrapper');
+            const parentEmailWrapper = document.getElementById('parentEmailWrapper');
+            const primaryBtn = document.getElementById('authPrimaryBtn');
+            const toggleBtn = document.getElementById('authToggleBtn');
+
+            if (currentMode === "login") {
+                currentMode = "register";
+                roleWrapper.classList.remove('hidden');
+                nameWrapper.classList.remove('hidden');
+                parentEmailWrapper.classList.remove('hidden');
+                primaryBtn.innerText = "Sajili Akaunti";
+                toggleBtn.innerText = "Tayari una akaunti? Ingia Hapa";
+            } else {
+                currentMode = "login";
+                roleWrapper.classList.add('hidden');
+                nameWrapper.classList.add('hidden');
+                parentEmailWrapper.classList.add('hidden');
+                primaryBtn.innerText = "Ingia";
+                toggleBtn.innerText = "Hujasajiliwa bado? Tengeneza Akaunti";
+            }
+        });
+
+        document.getElementById('authPrimaryBtn').addEventListener('click', async () => {
+            const email = document.getElementById('authEmail').value.trim();
+            const password = document.getElementById('authPassword').value.trim();
+
+            if (!email || !password) { toast("Jaza barua pepe na nywila!", "error"); return; }
+
+            if (currentMode === "login") {
+                try {
+                    await signInWithEmailAndPassword(auth, email, password);
+                    toast("Karibu tena!", "success");
+                } catch (err) {
+                    toast("Barua pepe au nywila si sahihi!", "error");
+                }
+            } else {
+                const name = document.getElementById('authName').value.trim();
+                const role = document.getElementById('authRole').value;
+                const parentEmail = document.getElementById('authParentEmail').value.trim();
+
+                if (!name) { toast("Jaza jina lako kamili!", "error"); return; }
+
+                try {
+                    const cred = await createUserWithEmailAndPassword(auth, email, password);
+                    const userData = {
+                        uid: cred.user.uid,
+                        fullName: name,
+                        email: email,
+                        role: role,
+                        createdAt: new Date().toISOString()
+                    };
+
+                    if (role === "Mtoto" && parentEmail) {
+                        const q = query(collection(db, "users"), where("email", "==", parentEmail), where("role", "==", "Mzazi"));
+                        const results = await getDocs(q);
+                        if (!results.empty) {
+                            userData.parentUid = results.docs[0].id;
+                            userData.parentEmailPending = null;
+                        } else {
+                            userData.parentEmailPending = parentEmail;
+                        }
+                    }
+
+                    await setDoc(doc(db, "users", cred.user.uid), userData);
+                    toast("Akaunti imesajiliwa kikamilifu!", "success");
+                } catch (err) {
+                    toast("Imeshindikana kusajili: " + err.message, "error");
+                }
+            }
+        });
+
+        document.getElementById('logoutBtn').addEventListener('click', () => signOut(auth));
+
+        // ================= MTOTO APP STATE =================
+        let map, liveMarker, liveAccuracyCircle, recordingPolyline, recordingCoords = [];
+        let recordWatchId = null, followWatchId = null;
+        let activeRoute = null; // { id, name, coords }
+        let followPrevPoint = null, followStartTime = null, followTotalDistance = 0;
+        let hasArrived = false, deviationEvents = [], lastOffRouteState = false, lastBeepTime = 0;
+        const ARRIVAL_RADIUS = 20;
+        let mtotoInitialized = false;
+
+        function stopAllWatches() {
+            if (recordWatchId !== null) { navigator.geolocation.clearWatch(recordWatchId); recordWatchId = null; }
+            if (followWatchId !== null) { navigator.geolocation.clearWatch(followWatchId); followWatchId = null; }
+        }
+
+        function setStatus(icon, title, detail, colorClass) {
+            document.getElementById('statusIcon').innerHTML = `<i class="fa-solid ${icon}"></i>`;
+            document.getElementById('statusIcon').className = `w-10 h-10 rounded-xl flex items-center justify-center text-lg ${colorClass}`;
+            document.getElementById('statusTitle').innerText = title;
+            document.getElementById('statusDetail').innerText = detail;
+        }
+
+        function addEventLogEntry(text) {
+            const log = document.getElementById('eventLog');
+            if (log.children.length === 1 && log.children[0].innerText === "Hakuna matukio bado.") log.innerHTML = "";
+            const p = document.createElement('p');
+            p.className = "text-[10px] text-slate-300 border-l-2 border-red-500 pl-2";
+            p.innerText = `${new Date().toLocaleTimeString('sw-TZ')} - ${text}`;
+            log.prepend(p);
+        }
+
+        function initMtotoApp() {
+            if (mtotoInitialized) { loadMyRoutes(); checkParentLinkStatus(); return; }
+            mtotoInitialized = true;
+
+            map = L.map('map').setView([-6.7924, 39.2083], 15);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19, attribution: '&copy; OpenStreetMap contributors'
+            }).addTo(map);
+
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition((pos) => {
+                    map.setView([pos.coords.latitude, pos.coords.longitude], 16);
+                }, () => {}, { enableHighAccuracy: true });
+            }
+
+            loadMyRoutes();
+            checkParentLinkStatus();
+            bindMtotoEvents();
+        }
+
+        async function checkParentLinkStatus() {
+            const snap = await getDoc(doc(db, "users", currentUser.uid));
+            const data = snap.data();
+            const statusEl = document.getElementById('parentLinkStatus');
+            if (data.parentUid) {
+                statusEl.innerText = "✅ Umeunganishwa na mzazi wako. Anaweza kukufuatilia.";
+                statusEl.className = "text-[10px] text-emerald-400";
+            } else if (data.parentEmailPending) {
+                statusEl.innerText = `⏳ Bado hujaunganishwa. Mzazi mwenye barua pepe "${data.parentEmailPending}" hajapatikana bado - jaribu "Unganisha" tena baadaye.`;
+                statusEl.className = "text-[10px] text-orange-400";
+            } else {
+                statusEl.innerText = "Bado hujaunganishwa na mzazi yeyote.";
+                statusEl.className = "text-[10px] text-slate-400";
+            }
+        }
+
+        function bindMtotoEvents() {
+            document.getElementById('relinkBtn').addEventListener('click', async () => {
+                const parentEmail = document.getElementById('relinkParentEmail').value.trim();
+                if (!parentEmail) { toast("Jaza barua pepe ya mzazi kwanza.", "error"); return; }
+                const q = query(collection(db, "users"), where("email", "==", parentEmail), where("role", "==", "Mzazi"));
+                const results = await getDocs(q);
+                if (!results.empty) {
+                    await updateDoc(doc(db, "users", currentUser.uid), { parentUid: results.docs[0].id, parentEmailPending: null });
+                    toast("Umeunganishwa na mzazi wako kikamilifu!", "success");
+                } else {
+                    await updateDoc(doc(db, "users", currentUser.uid), { parentEmailPending: parentEmail });
+                    toast("Mzazi bado hajasajili. Tutaendelea kujaribu.", "warning");
+                }
+                checkParentLinkStatus();
+            });
+
+            // ---- RECORD ----
+            document.getElementById('startRecordBtn').addEventListener('click', () => {
+                const routeName = document.getElementById('routeNameInput').value.trim();
+                if (!routeName) { toast("Jaza jina la njia kwanza!", "error"); return; }
+                if (!navigator.geolocation) { toast("Kifaa hakiungi mkono GPS.", "error"); return; }
+
+                recordingCoords = [];
+                if (recordingPolyline) map.removeLayer(recordingPolyline);
+                recordingPolyline = L.polyline([], { color: '#3b82f6', weight: 5 }).addTo(map);
+
+                setStatus('fa-record-vinyl', 'Inarekodi Njia...', 'Tembea, mstari unachorwa moja kwa moja.', 'bg-blue-600 text-white animate-pulse');
+
+                recordWatchId = navigator.geolocation.watchPosition((pos) => {
+                    const { latitude, longitude } = pos.coords;
+                    recordingCoords.push([latitude, longitude]);
+                    recordingPolyline.addLatLng([latitude, longitude]);
+                    updateLiveMarker(latitude, longitude, pos.coords.accuracy);
+                    map.panTo([latitude, longitude]);
+                }, (err) => toast(explainGeoError(err), "error"), { enableHighAccuracy: true, maximumAge: 1000, timeout: 15000 });
+
+                toggleBtnState('startRecordBtn', true); toggleBtnState('stopRecordBtn', false, 'bg-red-600 hover:bg-red-500');
+            });
+
+            document.getElementById('stopRecordBtn').addEventListener('click', async () => {
+                if (recordWatchId !== null) { navigator.geolocation.clearWatch(recordWatchId); recordWatchId = null; }
+
+                if (recordingCoords.length < 2) {
+                    toast("Njia fupi mno. Tembea zaidi kabla ya kusimamisha.", "error");
+                } else {
+                    const routeName = document.getElementById('routeNameInput').value.trim() || "Njia Isiyo na Jina";
+                    const simplified = douglasPeucker(recordingCoords, 5);
+                    try {
+                        const docRef = await addDoc(collection(db, "routes"), {
+                            ownerUid: currentUser.uid,
+                            ownerName: currentUserData.fullName,
+                            name: routeName,
+                            coords: simplified,
+                            originalPointCount: recordingCoords.length,
+                            simplifiedPointCount: simplified.length,
+                            createdAt: new Date().toISOString()
+                        });
+                        toast(`Njia "${routeName}" imehifadhiwa! (Pointi ${recordingCoords.length} → ${simplified.length} baada ya kusafisha)`, "success");
+                        document.getElementById('routeNameInput').value = "";
+                        loadMyRoutes();
+                    } catch (err) {
+                        toast("Imeshindikana kuhifadhi njia: " + err.message, "error");
+                    }
+                }
+
+                setStatus('fa-circle-check', 'Kurekodi Kumesimama', 'Njia imehifadhiwa. Chagua "Fuata" kwenye orodha.', 'bg-emerald-600 text-white');
+                toggleBtnState('startRecordBtn', false, 'bg-blue-600 hover:bg-blue-500'); toggleBtnState('stopRecordBtn', true);
+            });
+
+            document.getElementById('refreshRoutesBtn').addEventListener('click', loadMyRoutes);
+
+            // ---- FOLLOW ----
+            document.getElementById('startFollowBtn').addEventListener('click', startFollowing);
+            document.getElementById('stopFollowBtn').addEventListener('click', () => stopFollowing(false));
+        }
+
+        function toggleBtnState(id, disabled, activeClass) {
+            const btn = document.getElementById(id);
+            btn.disabled = disabled;
+            if (disabled) {
+                btn.className = "bg-slate-800 text-slate-500 font-black text-xs py-3 rounded-xl uppercase tracking-wide cursor-not-allowed";
+            } else {
+                btn.className = `${activeClass} text-white font-black text-xs py-3 rounded-xl transition uppercase tracking-wide`;
+            }
+        }
+
+        function updateLiveMarker(lat, lng, accuracy) {
+            if (!liveMarker) {
+                liveMarker = L.circleMarker([lat, lng], { radius: 8, color: '#3b82f6', fillColor: '#3b82f6', fillOpacity: 0.9 }).addTo(map);
+            } else {
+                liveMarker.setLatLng([lat, lng]);
+            }
+            if (accuracy) {
+                if (!liveAccuracyCircle) {
+                    liveAccuracyCircle = L.circle([lat, lng], { radius: accuracy, color: '#3b82f6', fillColor: '#3b82f6', fillOpacity: 0.08, weight: 1 }).addTo(map);
+                } else {
+                    liveAccuracyCircle.setLatLng([lat, lng]);
+                    liveAccuracyCircle.setRadius(accuracy);
+                }
+            }
+        }
+
+        async function loadMyRoutes() {
+            const listEl = document.getElementById('routesList');
+            listEl.innerHTML = `<p class="text-[10px] text-slate-500 text-center py-2"><i class="fa-solid fa-spinner fa-spin"></i> Inapakia...</p>`;
+            try {
+                const q = query(collection(db, "routes"), where("ownerUid", "==", currentUser.uid));
+                const snap = await getDocs(q);
+                if (snap.empty) {
+                    listEl.innerHTML = `<p class="text-[10px] text-slate-500 text-center py-4">Bado hujahifadhi njia yoyote.</p>`;
+                    return;
+                }
+                listEl.innerHTML = "";
+                snap.forEach(docSnap => {
+                    const r = docSnap.data();
+                    const row = document.createElement('div');
+                    row.className = "flex items-center justify-between bg-slate-950 border border-slate-800 rounded-xl px-3 py-2";
+                    row.innerHTML = `
+                        <div class="flex-1 min-w-0">
+                            <p class="text-xs font-bold text-white truncate">${r.name}</p>
+                            <p class="text-[9px] text-slate-500">Kodi: ${docSnap.id.substring(0,8)}...</p>
+                        </div>
+                        <div class="flex gap-1 shrink-0">
+                            <button data-id="${docSnap.id}" class="showRouteBtn bg-emerald-600/20 text-emerald-400 text-[10px] font-bold px-2 py-1.5 rounded-lg"><i class="fa-solid fa-eye"></i></button>
+                            <button data-id="${docSnap.id}" class="followRouteBtn bg-orange-600/20 text-orange-400 text-[10px] font-bold px-2 py-1.5 rounded-lg"><i class="fa-solid fa-shoe-prints"></i></button>
+                            <button data-id="${docSnap.id}" class="shareRouteBtn bg-blue-600/20 text-blue-400 text-[10px] font-bold px-2 py-1.5 rounded-lg"><i class="fa-solid fa-share-nodes"></i></button>
+                            <button data-id="${docSnap.id}" class="deleteRouteBtn bg-red-600/20 text-red-400 text-[10px] font-bold px-2 py-1.5 rounded-lg"><i class="fa-solid fa-trash"></i></button>
+                        </div>`;
+                    listEl.appendChild(row);
+                });
+
+                document.querySelectorAll('.showRouteBtn').forEach(b => b.addEventListener('click', (e) => showRouteById(e.currentTarget.dataset.id)));
+                document.querySelectorAll('.followRouteBtn').forEach(b => b.addEventListener('click', (e) => selectRouteToFollow(e.currentTarget.dataset.id)));
+                document.querySelectorAll('.shareRouteBtn').forEach(b => b.addEventListener('click', (e) => {
+                    toast(`Kodi ya kushiriki: ${e.currentTarget.dataset.id} (mpe mzazi wako aibandike kwenye "Angalia Njia kwa Kodi")`, "info");
+                }));
+                document.querySelectorAll('.deleteRouteBtn').forEach(b => b.addEventListener('click', async (e) => {
+                    if (confirm("Una uhakika unataka kufuta njia hii?")) {
+                        await deleteDoc(doc(db, "routes", e.currentTarget.dataset.id));
+                        toast("Njia imefutwa.", "success");
+                        loadMyRoutes();
+                    }
+                }));
+            } catch (err) {
+                listEl.innerHTML = `<p class="text-[10px] text-red-400 text-center py-4">Imeshindikana kupakia njia: ${err.message}</p>`;
+            }
+        }
+
+        let shownRoutePolyline = null, shownStartMarker = null, shownEndMarker = null;
+        async function showRouteById(routeId) {
+            const snap = await getDoc(doc(db, "routes", routeId));
+            if (!snap.exists()) { toast("Njia haipatikani.", "error"); return; }
+            const r = snap.data();
+            if (shownRoutePolyline) map.removeLayer(shownRoutePolyline);
+            if (shownStartMarker) map.removeLayer(shownStartMarker);
+            if (shownEndMarker) map.removeLayer(shownEndMarker);
+            shownRoutePolyline = L.polyline(r.coords, { color: '#10b981', weight: 5 }).addTo(map);
+            shownStartMarker = L.marker(r.coords[0]).addTo(map).bindPopup("Mwanzo");
+            shownEndMarker = L.marker(r.coords[r.coords.length - 1]).addTo(map).bindPopup("Mwisho");
+            map.fitBounds(shownRoutePolyline.getBounds(), { padding: [40, 40] });
+            toast(`Njia "${r.name}" imeonyeshwa (${r.coords.length} pointi)`, "success");
+        }
+
+        function selectRouteToFollow(routeId) {
+            getDoc(doc(db, "routes", routeId)).then(snap => {
+                if (!snap.exists()) return;
+                const r = snap.data();
+                activeRoute = { id: routeId, name: r.name, coords: r.coords };
+                document.getElementById('activeRouteLabel').innerText = `Njia iliyochaguliwa: "${r.name}" (${r.coords.length} pointi)`;
+                toggleBtnState('startFollowBtn', false, 'bg-orange-600 hover:bg-orange-500');
+                toast(`Njia "${r.name}" tayari kufuatiliwa.`, "success");
+            });
+        }
+
+        function startFollowing() {
+            if (!activeRoute) { toast("Chagua njia kwanza.", "error"); return; }
+            if (!navigator.geolocation) { toast("Kifaa hakiungi mkono GPS.", "error"); return; }
+
+            const threshold = parseFloat(document.getElementById('thresholdInput').value) || 30;
+
+            if (shownRoutePolyline) map.removeLayer(shownRoutePolyline);
+            shownRoutePolyline = L.polyline(activeRoute.coords, { color: '#10b981', weight: 5 }).addTo(map);
+            map.fitBounds(shownRoutePolyline.getBounds(), { padding: [40, 40] });
+
+            followPrevPoint = null; followStartTime = Date.now(); followTotalDistance = 0;
+            hasArrived = false; deviationEvents = []; lastOffRouteState = false;
+            document.getElementById('eventLog').innerHTML = `<p class="text-[10px] text-slate-500">Hakuna matukio bado.</p>`;
+            document.getElementById('tripStatsCard').classList.remove('hidden');
+            document.getElementById('compassBox').classList.remove('hidden');
+
+            setStatus('fa-shoe-prints', 'Inafuatilia...', 'Ukijitenga sana utaonywa mara moja.', 'bg-orange-600 text-white animate-pulse');
+
+            followWatchId = navigator.geolocation.watchPosition((pos) => {
+                const { latitude, longitude, accuracy, speed } = pos.coords;
+                updateLiveMarker(latitude, longitude, accuracy);
+                map.panTo([latitude, longitude]);
+
+                if (followPrevPoint) {
+                    followTotalDistance += haversineDistance(followPrevPoint[0], followPrevPoint[1], latitude, longitude);
+                }
+                followPrevPoint = [latitude, longitude];
+
+                const elapsed = Date.now() - followStartTime;
+                const speedKmh = (speed !== null && speed !== undefined) ? speed * 3.6 : (followTotalDistance / (elapsed/1000)) * 3.6;
+                document.getElementById('statDistance').innerText = `${Math.round(followTotalDistance)} m`;
+                document.getElementById('statTime').innerText = formatTime(elapsed);
+                document.getElementById('statSpeed').innerText = `${isFinite(speedKmh) ? speedKmh.toFixed(1) : '0.0'} km/h`;
+
+                const nearest = nearestPointOnRoute(latitude, longitude, activeRoute.coords);
+                const dist = nearest.distance;
+                const bearing = calcBearing(latitude, longitude, nearest.lat, nearest.lng);
+                document.getElementById('compassArrow').style.transform = `rotate(${bearing}deg)`;
+                document.getElementById('compassLabel').innerText = bearingToCardinal(bearing);
+
+                let statusForCloud = "on-route";
+
+                if (dist > threshold) {
+                    statusForCloud = "off-route";
+                    liveMarker.setStyle({ color: '#ef4444', fillColor: '#ef4444' });
+                    setStatus('fa-triangle-exclamation', 'UMEKOSEA NJIA!', `Uko mita ${Math.round(dist)} kutoka njia sahihi. Rudi ${bearingToCardinal(bearing)}.`, 'bg-red-600 text-white animate-pulse');
+                    if (!lastOffRouteState || Date.now() - lastBeepTime > 5000) {
+                        toast(`⚠️ UMEKOSEA NJIA! Mita ${Math.round(dist)} - elekea ${bearingToCardinal(bearing)}.`, "warning");
+                        beep();
+                        if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+                        lastBeepTime = Date.now();
+                        if (!lastOffRouteState) {
+                            deviationEvents.push({ time: new Date().toISOString(), distanceMeters: Math.round(dist), lat: latitude, lng: longitude });
+                            addEventLogEntry(`Umekosea njia - mita ${Math.round(dist)} mbali`);
+                        }
+                    }
+                    lastOffRouteState = true;
+                } else {
+                    liveMarker.setStyle({ color: '#3b82f6', fillColor: '#3b82f6' });
+                    if (lastOffRouteState) addEventLogEntry("Umerudi kwenye njia sahihi");
+                    lastOffRouteState = false;
+                    setStatus('fa-circle-check', 'Uko Kwenye Njia Sahihi', `Umbali kutoka njia: mita ${Math.round(dist)}.`, 'bg-emerald-600 text-white');
+                }
+
+                // Arifa ya kufika mwisho wa njia
+                const endPoint = activeRoute.coords[activeRoute.coords.length - 1];
+                const distToEnd = haversineDistance(latitude, longitude, endPoint[0], endPoint[1]);
+                if (!hasArrived && distToEnd < ARRIVAL_RADIUS) {
+                    hasArrived = true;
+                    toast("🎉 UMEFIKA SALAMA MWISHONI MWA NJIA!", "success");
+                    setStatus('fa-flag-checkered', 'Umefika Salama!', 'Umefika mwisho wa njia bila tatizo kubwa.', 'bg-emerald-600 text-white');
+                    if (navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 200]);
+                }
+
+                // Sasisha hali ya moja kwa moja (kwa mzazi kufuatilia)
+                setDoc(doc(db, "liveStatus", currentUser.uid), {
+                    fullName: currentUserData.fullName,
+                    lat: latitude, lng: longitude, accuracy: accuracy || null,
+                    speedKmh: isFinite(speedKmh) ? Math.round(speedKmh * 10) / 10 : 0,
+                    distanceFromRoute: Math.round(dist),
+                    status: statusForCloud,
+                    hasArrived,
+                    routeId: activeRoute.id, routeName: activeRoute.name,
+                    updatedAt: new Date().toISOString()
+                }, { merge: true }).catch(() => {});
+
+            }, (err) => toast(explainGeoError(err), "error"), { enableHighAccuracy: true, maximumAge: 1000, timeout: 15000 });
+
+            toggleBtnState('startFollowBtn', true); toggleBtnState('stopFollowBtn', false, 'bg-red-600 hover:bg-red-500');
+        }
+
+        async function stopFollowing(arrived) {
+            if (followWatchId !== null) { navigator.geolocation.clearWatch(followWatchId); followWatchId = null; }
+
+            if (activeRoute && followStartTime) {
+                try {
+                    await addDoc(collection(db, "trips"), {
+                        ownerUid: currentUser.uid,
+                        ownerName: currentUserData.fullName,
+                        routeId: activeRoute.id,
+                        routeName: activeRoute.name,
+                        startedAt: new Date(followStartTime).toISOString(),
+                        endedAt: new Date().toISOString(),
+                        totalDistanceMeters: Math.round(followTotalDistance),
+                        deviationEvents: deviationEvents.slice(0, 50),
+                        deviationCount: deviationEvents.length,
+                        arrivedSafely: hasArrived
+                    });
+                } catch (e) { /* kimya kimya - trip log si muhimu sana kushindwa kutokusimamisha safari */ }
+            }
+
+            setDoc(doc(db, "liveStatus", currentUser.uid), { status: "offline", updatedAt: new Date().toISOString() }, { merge: true }).catch(() => {});
+
+            setStatus('fa-circle-info', 'Kufuatilia Kumesimama', 'Bofya "Anza Kufuatilia" tena wakati wowote.', 'bg-slate-800 text-slate-400');
+            document.getElementById('compassBox').classList.add('hidden');
+            toggleBtnState('startFollowBtn', false, 'bg-orange-600 hover:bg-orange-500');
+            toggleBtnState('stopFollowBtn', true);
+        }
+
+        // ================= MZAZI APP =================
+        let mzaziInitialized = false;
+        let mzaziMap = null, mzaziLiveMarker = null, mzaziRoutePolyline = null, mzaziUnsub = null;
+
+        function initMzaziDashboard() {
+            if (mzaziInitialized) return;
+            mzaziInitialized = true;
+            loadLinkedChildren();
+            bindMzaziEvents();
+        }
+
+        function bindMzaziEvents() {
+            document.getElementById('loadRouteCodeBtn').addEventListener('click', async () => {
+                const code = document.getElementById('routeCodeInput').value.trim();
+                if (!code) { toast("Bandika kodi ya njia kwanza.", "error"); return; }
+                try {
+                    const snap = await getDoc(doc(db, "routes", code));
+                    if (!snap.exists()) { toast("Kodi hii haipo/si sahihi.", "error"); return; }
+                    const r = snap.data();
+                    openMzaziMap(`Njia: ${r.name}`, r.coords, null);
+                } catch (err) {
+                    toast("Imeshindikana kufungua njia: " + err.message, "error");
+                }
+            });
+
+            document.getElementById('closeMzaziMapBtn').addEventListener('click', () => {
+                document.getElementById('mzaziMapWrapper').classList.add('hidden');
+                if (mzaziUnsub) { mzaziUnsub(); mzaziUnsub = null; }
+            });
+        }
+
+        async function loadLinkedChildren() {
+            const listEl = document.getElementById('childrenList');
+            try {
+                const q = query(collection(db, "users"), where("parentUid", "==", currentUser.uid), where("role", "==", "Mtoto"));
+                const snap = await getDocs(q);
+                if (snap.empty) {
+                    listEl.innerHTML = `<p class="text-[10px] text-slate-500 text-center py-4">Hujaunganishwa na mtoto yeyote bado.</p>`;
+                    return;
+                }
+                listEl.innerHTML = "";
+                snap.forEach(childSnap => {
+                    const child = childSnap.data();
+                    const childUid = childSnap.id;
+                    const card = document.createElement('div');
+                    card.className = "bg-slate-950 border border-slate-800 rounded-xl p-3 space-y-2";
+                    card.innerHTML = `
+                        <div class="flex items-center justify-between">
+                            <p class="text-xs font-bold text-white">${child.fullName}</p>
+                            <span id="childStatus_${childUid}" class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-slate-800 text-slate-400">Haipo mtandaoni</span>
+                        </div>
+                        <p id="childDetail_${childUid}" class="text-[10px] text-slate-400">Inasubiri taarifa...</p>
+                        <div class="flex gap-2">
+                            <button data-uid="${childUid}" data-name="${child.fullName}" class="viewChildMapBtn flex-1 bg-blue-600/20 text-blue-400 text-[10px] font-bold py-2 rounded-lg"><i class="fa-solid fa-map-location-dot mr-1"></i> Angalia Ramani</button>
+                            <button data-uid="${childUid}" data-name="${child.fullName}" class="viewChildHistoryBtn flex-1 bg-purple-600/20 text-purple-400 text-[10px] font-bold py-2 rounded-lg"><i class="fa-solid fa-clock-rotate-left mr-1"></i> Historia</button>
+                        </div>`;
+                    listEl.appendChild(card);
+
+                    // Sikiliza hali ya moja kwa moja ya mtoto huyu
+                    onSnapshot(doc(db, "liveStatus", childUid), (liveSnap) => {
+                        const statusBadge = document.getElementById(`childStatus_${childUid}`);
+                        const detailEl = document.getElementById(`childDetail_${childUid}`);
+                        if (!statusBadge || !detailEl) return;
+                        if (!liveSnap.exists() || liveSnap.data().status === "offline") {
+                            statusBadge.className = "text-[9px] font-bold px-2 py-0.5 rounded-full bg-slate-800 text-slate-400";
+                            statusBadge.innerText = "Haipo mtandaoni";
+                            detailEl.innerText = "Mtoto hafuatilii njia sasa hivi.";
+                            return;
+                        }
+                        const d = liveSnap.data();
+                        if (d.status === "off-route") {
+                            statusBadge.className = "text-[9px] font-bold px-2 py-0.5 rounded-full bg-red-600/20 text-red-400 animate-pulse";
+                            statusBadge.innerText = "AMEKOSEA NJIA";
+                        } else if (d.hasArrived) {
+                            statusBadge.className = "text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-600/20 text-emerald-400";
+                            statusBadge.innerText = "Amefika Salama";
+                        } else {
+                            statusBadge.className = "text-[9px] font-bold px-2 py-0.5 rounded-full bg-blue-600/20 text-blue-400";
+                            statusBadge.innerText = "Kwenye Njia";
+                        }
+                        detailEl.innerText = `Njia: ${d.routeName || 'N/A'} | Umbali kutoka njia: ${d.distanceFromRoute}m | Kasi: ${d.speedKmh} km/h | Sasisho: ${new Date(d.updatedAt).toLocaleTimeString('sw-TZ')}`;
+                    });
+                });
+
+                document.querySelectorAll('.viewChildMapBtn').forEach(b => b.addEventListener('click', (e) => {
+                    viewChildOnMap(e.currentTarget.dataset.uid, e.currentTarget.dataset.name);
+                }));
+                document.querySelectorAll('.viewChildHistoryBtn').forEach(b => b.addEventListener('click', (e) => {
+                    loadChildTripHistory(e.currentTarget.dataset.uid, e.currentTarget.dataset.name);
+                }));
+            } catch (err) {
+                listEl.innerHTML = `<p class="text-[10px] text-red-400 text-center py-4">Imeshindikana kupakia: ${err.message}</p>`;
+            }
+        }
+
+        function openMzaziMap(title, routeCoords, childUid) {
+            document.getElementById('mzaziMapWrapper').classList.remove('hidden');
+            document.getElementById('mzaziMapTitle').innerText = title;
+
+            if (!mzaziMap) {
+                mzaziMap = L.map('mzaziMap').setView([-6.7924, 39.2083], 14);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    maxZoom: 19, attribution: '&copy; OpenStreetMap'
+                }).addTo(mzaziMap);
+            }
+            if (mzaziRoutePolyline) mzaziMap.removeLayer(mzaziRoutePolyline);
+            if (mzaziLiveMarker) { mzaziMap.removeLayer(mzaziLiveMarker); mzaziLiveMarker = null; }
+
+            if (routeCoords && routeCoords.length > 1) {
+                mzaziRoutePolyline = L.polyline(routeCoords, { color: '#10b981', weight: 5 }).addTo(mzaziMap);
+                mzaziMap.fitBounds(mzaziRoutePolyline.getBounds(), { padding: [30, 30] });
+            }
+
+            if (mzaziUnsub) { mzaziUnsub(); mzaziUnsub = null; }
+
+            if (childUid) {
+                mzaziUnsub = onSnapshot(doc(db, "liveStatus", childUid), (snap) => {
+                    const detailEl = document.getElementById('mzaziLiveDetail');
+                    if (!snap.exists()) { detailEl.innerText = "Hakuna taarifa ya moja kwa moja bado."; return; }
+                    const d = snap.data();
+                    if (!mzaziLiveMarker) {
+                        mzaziLiveMarker = L.circleMarker([d.lat, d.lng], { radius: 9, color: d.status === 'off-route' ? '#ef4444' : '#3b82f6', fillColor: d.status === 'off-route' ? '#ef4444' : '#3b82f6', fillOpacity: 0.9 }).addTo(mzaziMap);
+                    } else {
+                        mzaziLiveMarker.setLatLng([d.lat, d.lng]);
+                        mzaziLiveMarker.setStyle({ color: d.status === 'off-route' ? '#ef4444' : '#3b82f6', fillColor: d.status === 'off-route' ? '#ef4444' : '#3b82f6' });
+                    }
+                    detailEl.innerText = `Hali: ${d.status === 'off-route' ? 'AMEKOSEA NJIA ⚠️' : 'Kwenye Njia ✅'} | Umbali kutoka njia: ${d.distanceFromRoute}m | Kasi: ${d.speedKmh} km/h | Sasisho: ${new Date(d.updatedAt).toLocaleTimeString('sw-TZ')}`;
+                });
+            }
+        }
+
+        async function viewChildOnMap(childUid, childName) {
+            const liveSnap = await getDoc(doc(db, "liveStatus", childUid));
+            let routeCoords = null;
+            if (liveSnap.exists() && liveSnap.data().routeId) {
+                const routeSnap = await getDoc(doc(db, "routes", liveSnap.data().routeId));
+                if (routeSnap.exists()) routeCoords = routeSnap.data().coords;
+            }
+            openMzaziMap(`Ramani ya ${childName}`, routeCoords, childUid);
+        }
+
+        async function loadChildTripHistory(childUid, childName) {
+            const listEl = document.getElementById('tripsHistoryList');
+            listEl.innerHTML = `<p class="text-[10px] text-slate-500 text-center py-2"><i class="fa-solid fa-spinner fa-spin"></i> Inapakia historia ya ${childName}...</p>`;
+            try {
+                const q = query(collection(db, "trips"), where("ownerUid", "==", childUid), orderBy("startedAt", "desc"), limit(20));
+                const snap = await getDocs(q);
+                if (snap.empty) {
+                    listEl.innerHTML = `<p class="text-[10px] text-slate-500 text-center py-4">Hakuna historia ya safari bado kwa ${childName}.</p>`;
+                    return;
+                }
+                listEl.innerHTML = "";
+                snap.forEach(tripSnap => {
+                    const t = tripSnap.data();
+                    const row = document.createElement('div');
+                    row.className = "bg-slate-950 border border-slate-800 rounded-xl p-3";
+                    row.innerHTML = `
+                        <div class="flex justify-between items-center">
+                            <p class="text-xs font-bold text-white">${t.routeName}</p>
+                            <span class="text-[9px] font-bold px-2 py-0.5 rounded-full ${t.arrivedSafely ? 'bg-emerald-600/20 text-emerald-400' : 'bg-slate-800 text-slate-400'}">${t.arrivedSafely ? 'Amefika Salama' : 'Hakumaliza'}</span>
+                        </div>
+                        <p class="text-[9px] text-slate-500 mt-1">${new Date(t.startedAt).toLocaleString('sw-TZ')}</p>
+                        <p class="text-[10px] text-slate-400 mt-1">Umbali: ${t.totalDistanceMeters}m | Mara alizokosea njia: ${t.deviationCount}</p>
+                    `;
+                    listEl.appendChild(row);
+                });
+            } catch (err) {
+                listEl.innerHTML = `<p class="text-[10px] text-red-400 text-center py-4">Imeshindikana kupakia historia: ${err.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>
